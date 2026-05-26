@@ -22,15 +22,11 @@ type conn struct{}
 // All cross-platform functions and Socket methods are unimplemented outside
 // of Linux.
 
-func dial(_ int, _ *Config) (*conn, uint32, error) { return nil, 0, errUnimplemented }
-func newError(_ int) error                         { return errUnimplemented }
+func dial(_ int, _ *Config) (*conn, uint32, error) { _ = "STUB: not implemented"; return nil, 0, nil }
+func newError(_ int) error                         { _ = "STUB: not implemented"; return nil }
 
-func (c *conn) Send(_ Message) error           { return errUnimplemented }
-func (c *conn) SendMessages(_ []Message) error { return errUnimplemented }
-func (c *conn) Receive() ([]Message, error)    { return nil, errUnimplemented }
-func (c *conn) Close() error                   { return errUnimplemented }
-func (c *conn) ReceiveIter() iter.Seq2[Message, error] {
-	return func(yield func(Message, error) bool) {
-		yield(Message{}, errUnimplemented)
-	}
-}
+func (c *conn) Send(_ Message) error                   { _ = "STUB: not implemented"; return nil }
+func (c *conn) SendMessages(_ []Message) error         { _ = "STUB: not implemented"; return nil }
+func (c *conn) Receive() ([]Message, error)            { _ = "STUB: not implemented"; return nil, nil }
+func (c *conn) Close() error                           { _ = "STUB: not implemented"; return nil }
+func (c *conn) ReceiveIter() iter.Seq2[Message, error] { _ = "STUB: not implemented"; return nil }

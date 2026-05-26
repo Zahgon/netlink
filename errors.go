@@ -2,10 +2,7 @@ package netlink
 
 import (
 	"errors"
-	"fmt"
 	"net"
-	"os"
-	"strings"
 )
 
 // Error messages which can be returned by Validate.
@@ -25,24 +22,16 @@ var errNotSupported = errors.New("operation not supported")
 var errMessageTruncated = errors.New("message truncated")
 
 // notSupported provides a concise constructor for "not supported" errors.
-func notSupported(op string) error {
-	return newOpError(op, errNotSupported)
-}
+func notSupported(op string) error { _ = "STUB: not implemented"; return nil }
 
 // IsNotExist determines if an error is produced as the result of querying some
 // file, object, resource, etc. which does not exist.
 //
 // Deprecated: use errors.Unwrap and/or `errors.Is(err, os.Permission)` in Go
 // 1.13+.
-func IsNotExist(err error) bool {
-	switch err := err.(type) {
-	case *OpError:
-		// Unwrap the inner error and use the stdlib's logic.
-		return os.IsNotExist(err.Err)
-	default:
-		return os.IsNotExist(err)
-	}
-}
+func IsNotExist(err error) bool { _ = "STUB: not implemented"; return false }
+
+// Unwrap the inner error and use the stdlib's logic.
 
 var (
 	_ error     = &OpError{}
@@ -82,68 +71,32 @@ type OpError struct {
 
 // newOpError is a small wrapper for creating an OpError. As a convenience, it
 // returns nil if the input err is nil: akin to os.NewSyscallError.
-func newOpError(op string, err error) error {
-	if err == nil {
-		return nil
-	}
+func newOpError(op string, err error) error { _ = "STUB: not implemented"; return nil }
 
-	return &OpError{
-		Op:  op,
-		Err: err,
-	}
-}
-
-func (e *OpError) Error() string {
-	if e == nil {
-		return "<nil>"
-	}
-
-	var sb strings.Builder
-	_, _ = fmt.Fprintf(&sb, "netlink %s: %v", e.Op, e.Err)
-
-	if e.Message != "" || e.Offset != 0 {
-		_, _ = fmt.Fprintf(&sb, ", offset: %d, message: %q",
-			e.Offset, e.Message)
-	}
-
-	return sb.String()
-}
+func (e *OpError) Error() string { _ = "STUB: not implemented"; return "" }
 
 // Unwrap unwraps the internal Err field for use with errors.Unwrap.
-func (e *OpError) Unwrap() error { return e.Err }
+func (e *OpError) Unwrap() error {
+	_ = "STUB: not implemented"
 
-// Portions of this code taken from the Go standard library:
-//
-// Copyright 2009 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+	// Portions of this code taken from the Go standard library:
+	//
+	// Copyright 2009 The Go Authors. All rights reserved.
+	// Use of this source code is governed by a BSD-style
+	// license that can be found in the LICENSE file.
+	return nil
+}
 
 type timeout interface {
 	Timeout() bool
 }
 
 // Timeout reports whether the error was caused by an I/O timeout.
-func (e *OpError) Timeout() bool {
-	ne := &os.SyscallError{}
-	if errors.As(e.Err, &ne) {
-		t, ok := ne.Err.(timeout)
-		return ok && t.Timeout()
-	}
-	t, ok := e.Err.(timeout)
-	return ok && t.Timeout()
-}
+func (e *OpError) Timeout() bool { _ = "STUB: not implemented"; return false }
 
 type temporary interface {
 	Temporary() bool
 }
 
 // Temporary reports whether an operation may succeed if retried.
-func (e *OpError) Temporary() bool {
-	ne := &os.SyscallError{}
-	if errors.As(e.Err, &ne) {
-		t, ok := ne.Err.(temporary)
-		return ok && t.Temporary()
-	}
-	t, ok := e.Err.(temporary)
-	return ok && t.Temporary()
-}
+func (e *OpError) Temporary() bool { _ = "STUB: not implemented"; return false }

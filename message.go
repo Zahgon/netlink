@@ -1,11 +1,8 @@
 package netlink
 
 import (
-	"encoding/binary"
 	"errors"
-	"fmt"
 	"iter"
-	"unsafe"
 )
 
 // Flags which may apply to netlink attribute types when communicating with
@@ -95,45 +92,7 @@ const (
 )
 
 // String returns the string representation of a HeaderFlags.
-func (f HeaderFlags) String() string {
-	names := []string{
-		"request",
-		"multi",
-		"acknowledge",
-		"echo",
-		"dumpinterrupted",
-		"dumpfiltered",
-	}
-
-	var s string
-
-	left := uint(f)
-
-	for i, name := range names {
-		if f&(1<<uint(i)) != 0 {
-			if s != "" {
-				s += "|"
-			}
-
-			s += name
-
-			left ^= (1 << uint(i))
-		}
-	}
-
-	if s == "" && left == 0 {
-		s = "0"
-	}
-
-	if left > 0 {
-		if s != "" {
-			s += "|"
-		}
-		s += fmt.Sprintf("%#x", left)
-	}
-
-	return s
-}
+func (f HeaderFlags) String() string { _ = "STUB: not implemented"; return "" }
 
 // HeaderType specifies the type of a Header.
 type HeaderType uint16
@@ -154,20 +113,7 @@ const (
 )
 
 // String returns the string representation of a HeaderType.
-func (t HeaderType) String() string {
-	switch t {
-	case Noop:
-		return "noop"
-	case Error:
-		return "error"
-	case Done:
-		return "done"
-	case Overrun:
-		return "overrun"
-	default:
-		return fmt.Sprintf("unknown(%d)", t)
-	}
-}
+func (t HeaderType) String() string { _ = "STUB: not implemented"; return "" }
 
 // NB: the memory layout of Header and Linux's syscall.NlMsgHdr must be
 // exactly the same.  Cannot reorder, change data type, add, or remove fields.
@@ -203,149 +149,70 @@ type Message struct {
 }
 
 // MarshalBinary marshals a Message into a byte slice.
-func (m Message) MarshalBinary() ([]byte, error) {
-	ml := nlmsgAlign(int(m.Header.Length))
-	if ml < nlmsgHeaderLen || ml != int(m.Header.Length) {
-		return nil, errIncorrectMessageLength
-	}
-
-	b := make([]byte, ml)
-
-	binary.NativeEndian.PutUint32(b[0:], m.Header.Length)
-	binary.NativeEndian.PutUint16(b[4:], uint16(m.Header.Type))
-	binary.NativeEndian.PutUint16(b[6:], uint16(m.Header.Flags))
-	binary.NativeEndian.PutUint32(b[8:], m.Header.Sequence)
-	binary.NativeEndian.PutUint32(b[12:], m.Header.PID)
-	copy(b[16:], m.Data)
-
-	return b, nil
-}
+func (m Message) MarshalBinary() ([]byte, error) { _ = "STUB: not implemented"; return nil, nil }
 
 // UnmarshalBinary unmarshals the contents of a byte slice into a Message.
-func (m *Message) UnmarshalBinary(b []byte) error {
-	if len(b) < nlmsgHeaderLen {
-		return errShortMessage
-	}
-	if len(b) != nlmsgAlign(len(b)) {
-		return errUnalignedMessage
-	}
+func (m *Message) UnmarshalBinary(b []byte) error { _ = "STUB: not implemented"; return nil }
 
-	// Don't allow misleading length
-	m.Header.Length = binary.NativeEndian.Uint32(b[0:])
-	if int(m.Header.Length) < nlmsgHeaderLen || int(m.Header.Length) > len(b) {
-		return errShortMessage
-	}
-
-	m.Header.Type = HeaderType(binary.NativeEndian.Uint16(b[4:]))
-	m.Header.Flags = HeaderFlags(binary.NativeEndian.Uint16(b[6:]))
-	m.Header.Sequence = binary.NativeEndian.Uint32(b[8:])
-	m.Header.PID = binary.NativeEndian.Uint32(b[12:])
-	m.Data = b[nlmsgHeaderLen:m.Header.Length]
-
-	return nil
-}
+// Don't allow misleading length
 
 // checkMessage checks a single Message for netlink errors.
 func checkMessage(m Message) error {
+	_ = "STUB: not implemented"
 	// NB: All non-nil errors returned from this function *must* be of type
 	// OpError in order to maintain the appropriate contract with callers of
 	// this package.
-
-	// The libnl documentation indicates that type error can
-	// contain error codes:
-	// https://www.infradead.org/~tgr/libnl/doc/core.html#core_errmsg.
-	//
-	// However, rtnetlink at least seems to also allow errors to occur at the
-	// end of a multipart message with done/multi and an error number.
-	var hasHeader bool
-	switch {
-	case m.Header.Type == Error:
-		// Error code followed by nlmsghdr/ext ack attributes.
-		hasHeader = true
-	case m.Header.Type == Done && m.Header.Flags&Multi != 0:
-		// If no data, there must be no error number so just  exit early. Some
-		// of the unit tests hard-coded this but I don't actually know if this
-		// case occurs in the wild.
-		if len(m.Data) == 0 {
-			return nil
-		}
-
-		// Done|Multi potentially followed by ext ack attributes.
-	default:
-		// Neither, nothing to do.
-		return nil
-	}
-
-	// Errno occupies 4 bytes.
-	const endErrno = 4
-	if len(m.Data) < endErrno {
-		return newOpError("receive", errShortErrorMessage)
-	}
-
-	c := int32(binary.NativeEndian.Uint32(m.Data[:endErrno]))
-	if c == 0 {
-		// 0 indicates no error.
-		return nil
-	}
-
-	oerr := &OpError{
-		Op: "receive",
-		// Error code is a negative integer, convert it into an OS-specific raw
-		// system call error, but do not wrap with os.NewSyscallError to signify
-		// that this error was produced by a netlink message; not a system call.
-		Err:      newError(-1 * int(c)),
-		Sequence: m.Header.Sequence,
-	}
-
-	// TODO(mdlayher): investigate the Capped flag.
-
-	if m.Header.Flags&AcknowledgeTLVs == 0 {
-		// No extended acknowledgement.
-		return oerr
-	}
-
-	// Flags indicate an extended acknowledgement. The type/flags combination
-	// checked above determines the offset where the TLVs occur.
-	var off int
-	if hasHeader {
-		// There is an nlmsghdr preceding the TLVs.
-		if len(m.Data) < endErrno+nlmsgHeaderLen {
-			return newOpError("receive", errShortErrorMessage)
-		}
-
-		// The TLVs should be at the offset indicated by the nlmsghdr.length,
-		// plus the offset where the header began. But make sure the calculated
-		// offset is still in-bounds.
-		h := *(*Header)(unsafe.Pointer(&m.Data[endErrno : endErrno+nlmsgHeaderLen][0]))
-		off = endErrno + int(h.Length)
-
-		if len(m.Data) < off {
-			return newOpError("receive", errShortErrorMessage)
-		}
-	} else {
-		// There is no nlmsghdr preceding the TLVs, parse them directly.
-		off = endErrno
-	}
-
-	ad, err := NewAttributeDecoder(m.Data[off:])
-	if err != nil {
-		// Malformed TLVs, just return the OpError with the info we have.
-		return oerr
-	}
-
-	for ad.Next() {
-		switch ad.Type() {
-		case 1: // unix.NLMSGERR_ATTR_MSG
-			oerr.Message = ad.String()
-		case 2: // unix.NLMSGERR_ATTR_OFFS
-			oerr.Offset = int(ad.Uint32())
-		}
-	}
-
-	// Explicitly ignore ad.Err: malformed TLVs, just return the OpError with
-	// the info we have.
-	return oerr
+	return nil
 }
+
+// The libnl documentation indicates that type error can
+// contain error codes:
+// https://www.infradead.org/~tgr/libnl/doc/core.html#core_errmsg.
+//
+// However, rtnetlink at least seems to also allow errors to occur at the
+// end of a multipart message with done/multi and an error number.
+
+// Error code followed by nlmsghdr/ext ack attributes.
+
+// If no data, there must be no error number so just  exit early. Some
+// of the unit tests hard-coded this but I don't actually know if this
+// case occurs in the wild.
+
+// Done|Multi potentially followed by ext ack attributes.
+
+// Neither, nothing to do.
+
+// Errno occupies 4 bytes.
+
+// 0 indicates no error.
+
+// Error code is a negative integer, convert it into an OS-specific raw
+// system call error, but do not wrap with os.NewSyscallError to signify
+// that this error was produced by a netlink message; not a system call.
+
+// TODO(mdlayher): investigate the Capped flag.
+
+// No extended acknowledgement.
+
+// Flags indicate an extended acknowledgement. The type/flags combination
+// checked above determines the offset where the TLVs occur.
+
+// There is an nlmsghdr preceding the TLVs.
+
+// The TLVs should be at the offset indicated by the nlmsghdr.length,
+// plus the offset where the header began. But make sure the calculated
+// offset is still in-bounds.
+
+// There is no nlmsghdr preceding the TLVs, parse them directly.
+
+// Malformed TLVs, just return the OpError with the info we have.
+
+// unix.NLMSGERR_ATTR_MSG
+
+// unix.NLMSGERR_ATTR_OFFS
+
+// Explicitly ignore ad.Err: malformed TLVs, just return the OpError with
+// the info we have.
 
 // parseMessagesIter returns an iterator over netlink messages in b.
 // Each iteration yields a Message and any error encountered during parsing.
@@ -354,33 +221,6 @@ func checkMessage(m Message) error {
 // If b is less that NLMSG_HDRLEN bytes, no error or messages will be returned.
 // The same applies for any trailing bytes whose length is less than
 // NLMSG_HDRLEN.
-func parseMessagesIter(b []byte) iter.Seq2[Message, error] {
-	return func(yield func(Message, error) bool) {
-		for len(b) >= nlmsgHeaderLen {
-			length := binary.NativeEndian.Uint32(b[0:])
-			if int(length) < nlmsgHeaderLen {
-				yield(Message{}, errIncorrectMessageLength)
-				return
-			}
+func parseMessagesIter(b []byte) iter.Seq2[Message, error] { _ = "STUB: not implemented"; return nil }
 
-			alength := nlmsgAlign(int(length))
-			if alength > len(b) {
-				yield(Message{}, errShortMessage)
-				return
-			}
-
-			var message Message
-			if err := message.UnmarshalBinary(b[:alength]); err != nil {
-				yield(Message{}, err)
-				return
-			}
-
-			// Return if the consumer has stopped iterating.
-			if !yield(message, nil) {
-				return
-			}
-
-			b = b[alength:]
-		}
-	}
-}
+// Return if the consumer has stopped iterating.

@@ -9,14 +9,10 @@ import "unsafe"
 const nlmsgAlignTo = 4
 
 // #define NLMSG_ALIGN(length) ( ((length)+NLMSG_ALIGNTO-1) & ~(NLMSG_ALIGNTO-1) )
-func nlmsgAlign(length int) int {
-	return ((length) + nlmsgAlignTo - 1) & ^(nlmsgAlignTo - 1)
-}
+func nlmsgAlign(length int) int { _ = "STUB: not implemented"; return 0 }
 
 // #define NLMSG_LENGTH(length) ((length) + NLMSG_HDRLEN)
-func nlmsgLength(length int) int {
-	return length + nlmsgHeaderLen
-}
+func nlmsgLength(length int) int { _ = "STUB: not implemented"; return 0 }
 
 // #define NLMSG_HDRLEN     ((int) NLMSG_ALIGN(sizeof(struct nlmsghdr)))
 var nlmsgHeaderLen = nlmsgAlign(int(unsafe.Sizeof(Header{})))
@@ -25,9 +21,7 @@ var nlmsgHeaderLen = nlmsgAlign(int(unsafe.Sizeof(Header{})))
 const nlaAlignTo = 4
 
 // #define NLA_ALIGN(length)          (((length) + NLA_ALIGNTO - 1) & ~(NLA_ALIGNTO - 1))
-func nlaAlign(length int) int {
-	return ((length) + nlaAlignTo - 1) & ^(nlaAlignTo - 1)
-}
+func nlaAlign(length int) int { _ = "STUB: not implemented"; return 0 }
 
 // Because this package's Attribute type contains a byte slice, unsafe.Sizeof
 // can't be used to determine the correct length.

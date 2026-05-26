@@ -3,6 +3,4 @@
 
 package nltest
 
-func isSyscallError(_ error) bool {
-	return false
-}
+func isSyscallError(_ error) bool { _ = "STUB: not implemented"; return false }

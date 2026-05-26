@@ -2,14 +2,9 @@
 package nltest
 
 import (
-	"errors"
-	"fmt"
-	"io"
 	"iter"
-	"os"
 
 	"github.com/mdlayher/netlink"
-	"github.com/mdlayher/netlink/nlenc"
 )
 
 // PID is the netlink header PID value assigned by nltest.
@@ -17,46 +12,23 @@ const PID = 1
 
 // MustMarshalAttributes marshals a slice of netlink.Attributes to their binary
 // format, but panics if any errors occur.
-func MustMarshalAttributes(attrs []netlink.Attribute) []byte {
-	b, err := netlink.MarshalAttributes(attrs)
-	if err != nil {
-		panic(fmt.Sprintf("failed to marshal attributes to binary: %v", err))
-	}
-
-	return b
-}
+func MustMarshalAttributes(attrs []netlink.Attribute) []byte { _ = "STUB: not implemented"; return nil }
 
 // Multipart sends a slice of netlink.Messages to the caller as a
 // netlink multi-part message. If less than two messages are present,
 // the messages are not altered.
 func Multipart(msgs []netlink.Message) ([]netlink.Message, error) {
-	if len(msgs) < 2 {
-		return msgs, nil
-	}
-
-	for i := range msgs {
-		// Last message has header type "done" in addition to multi-part flag.
-		if i == len(msgs)-1 {
-			msgs[i].Header.Type = netlink.Done
-		}
-
-		msgs[i].Header.Flags |= netlink.Multi
-	}
-
-	return msgs, nil
+	_ = "STUB: not implemented"
+	return nil, nil
 }
+
+// Last message has header type "done" in addition to multi-part flag.
 
 // Error returns a netlink error to the caller with the specified error
 // number, in the body of the specified request message.
 func Error(number int, reqs []netlink.Message) ([]netlink.Message, error) {
-	req := reqs[0]
-	req.Header.Length += 4
-	req.Header.Type = netlink.Error
-
-	errno := -1 * int32(number)
-	req.Data = append(nlenc.Int32Bytes(errno), req.Data...)
-
-	return []netlink.Message{req}, nil
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // A Func is a function that can be used to test netlink.Conn interactions.
@@ -77,13 +49,7 @@ type Func func(req []netlink.Message) ([]netlink.Message, error)
 // Dial sets up a netlink.Conn for testing using the specified Func. All requests
 // sent from the connection will be passed to the Func.  The connection should be
 // closed as usual when it is no longer needed.
-func Dial(fn Func) *netlink.Conn {
-	sock := &socket{
-		fn: fn,
-	}
-
-	return netlink.NewConn(sock, PID)
-}
+func Dial(fn Func) *netlink.Conn { _ = "STUB: not implemented"; return nil }
 
 // CheckRequest returns a Func that verifies that each message in an incoming
 // request has the specified netlink header type and flags in the same slice
@@ -103,29 +69,8 @@ func Dial(fn Func) *netlink.Conn {
 // As an example, if types[0] is 0 and reqs[0].Header.Type is 1, the check will
 // succeed because types[0] was not specified.
 func CheckRequest(types []netlink.HeaderType, flags []netlink.HeaderFlags, fn Func) Func {
-	if len(types) != len(flags) {
-		panicf("nltest: CheckRequest called with mismatched types and flags slice lengths: %d != %d",
-			len(types), len(flags))
-	}
-
-	return func(req []netlink.Message) ([]netlink.Message, error) {
-		if len(types) != len(req) {
-			panicf("nltest: CheckRequest function invoked types/flags and request message slice lengths: %d != %d",
-				len(types), len(req))
-		}
-
-		for i := range req {
-			if want, got := types[i], req[i].Header.Type; types[i] != 0 && want != got {
-				return nil, fmt.Errorf("nltest: unexpected netlink header type: %s, want: %s", got, want)
-			}
-
-			if want, got := flags[i], req[i].Header.Flags; flags[i] != 0 && want != got {
-				return nil, fmt.Errorf("nltest: unexpected netlink header flags: %s, want: %s", got, want)
-			}
-		}
-
-		return fn(req)
-	}
+	_ = "STUB: not implemented"
+	return *new(Func)
 }
 
 // A socket is a netlink.Socket used for testing.
@@ -136,114 +81,34 @@ type socket struct {
 	err  error
 }
 
-func (c *socket) Close() error { return nil }
+func (c *socket) Close() error { _ = "STUB: not implemented"; return nil }
 
 func (c *socket) SendMessages(messages []netlink.Message) error {
-	msgs, err := c.fn(messages)
-	c.msgs = append(c.msgs, msgs...)
-	c.err = err
+	_ = "STUB: not implemented"
 	return nil
 }
 
-func (c *socket) Send(m netlink.Message) error {
-	c.msgs, c.err = c.fn([]netlink.Message{m})
-	return nil
-}
+func (c *socket) Send(m netlink.Message) error { _ = "STUB: not implemented"; return nil }
 
-func (c *socket) Receive() ([]netlink.Message, error) {
-	var msgs []netlink.Message
-	for msg, err := range c.ReceiveIter() {
-		if err != nil {
-			return nil, err
-		}
-		msgs = append(msgs, msg)
-	}
-
-	return msgs, nil
-}
+func (c *socket) Receive() ([]netlink.Message, error) { _ = "STUB: not implemented"; return nil, nil }
 
 func (c *socket) ReceiveIter() iter.Seq2[netlink.Message, error] {
-	return func(yield func(netlink.Message, error) bool) {
-		// No messages set by Send means that we are emulating a
-		// multicast response or an error occurred.
-		if len(c.msgs) == 0 {
-			switch {
-			case c.err == nil:
-				msgs, err := c.fn(nil)
-				if errors.Is(err, io.EOF) {
-					return
-				}
-				if err != nil {
-					yield(netlink.Message{}, err)
-					return
-				}
-				for _, m := range msgs {
-					if !yield(m, nil) {
-						return
-					}
-				}
-				return
-			case errors.Is(c.err, io.EOF):
-				return
-			}
-
-			// If the error is a system call error, wrap it in os.NewSyscallError
-			// to simulate what the Linux netlink.Conn does.
-			if isSyscallError(c.err) {
-				err := c.err
-				c.err = nil
-				yield(netlink.Message{}, os.NewSyscallError("recvmsg", err))
-				return
-			}
-
-			// Some generic error occurred and should be passed to the caller.
-			err := c.err
-			c.err = nil
-			yield(netlink.Message{}, err)
-			return
-		}
-
-		// Detect multi-part messages.
-		var multi bool
-		for _, m := range c.msgs {
-			if m.Header.Flags&netlink.Multi != 0 && m.Header.Type != netlink.Done {
-				multi = true
-			}
-		}
-
-		// When a multi-part message is detected, the messages are returned in
-		// batches of half the total messages, so that multiple calls to Receive or
-		// ReceiveIter from netlink.Conn are needed to drain all messages.
-		if multi {
-			batchSize := (len(c.msgs) + 1) / 2
-			batch := c.msgs[:batchSize]
-			c.msgs = c.msgs[batchSize:]
-
-			for _, m := range batch {
-				if !yield(m, nil) {
-					return
-				}
-			}
-
-			return
-		}
-
-		msgs, err := c.msgs, c.err
-		c.msgs, c.err = nil, nil
-
-		if err != nil {
-			yield(netlink.Message{}, err)
-			return
-		}
-
-		for _, m := range msgs {
-			if !yield(m, nil) {
-				return
-			}
-		}
-	}
+	_ = "STUB: not implemented"
+	return nil
 }
 
-func panicf(format string, a ...any) {
-	panic(fmt.Sprintf(format, a...))
-}
+// No messages set by Send means that we are emulating a
+// multicast response or an error occurred.
+
+// If the error is a system call error, wrap it in os.NewSyscallError
+// to simulate what the Linux netlink.Conn does.
+
+// Some generic error occurred and should be passed to the caller.
+
+// Detect multi-part messages.
+
+// When a multi-part message is detected, the messages are returned in
+// batches of half the total messages, so that multiple calls to Receive or
+// ReceiveIter from netlink.Conn are needed to drain all messages.
+
+func panicf(format string, a ...any) { _ = "STUB: not implemented"; return }

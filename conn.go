@@ -2,9 +2,7 @@ package netlink
 
 import (
 	"iter"
-	"math/rand"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -67,16 +65,12 @@ type Socket interface {
 // Config specifies optional configuration for Conn. If config is nil, a default
 // configuration will be used.
 func Dial(family int, config *Config) (*Conn, error) {
+	_ = "STUB: not implemented"
 	// TODO(mdlayher): plumb in netlink.OpError wrapping?
-
-	// Use OS-specific dial() to create Socket.
-	c, pid, err := dial(family, config)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewConn(c, pid), nil
+	return nil, nil
 }
+
+// Use OS-specific dial() to create Socket.
 
 // NewConn creates a Conn using the specified Socket and PID for netlink
 // communications.
@@ -84,42 +78,26 @@ func Dial(family int, config *Config) (*Conn, error) {
 // NewConn is primarily useful for tests. Most applications should use
 // Dial instead.
 func NewConn(sock Socket, pid uint32) *Conn {
+	_ = "STUB: not implemented"
 	// Seed the sequence number using a random number generator.
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	seq := r.Uint32()
-
-	// Configure a debugger if arguments are set.
-	var d *debugger
-	if len(debugArgs) > 0 {
-		d = newDebugger(debugArgs)
-	}
-
-	return &Conn{
-		seq:  seq,
-		sock: sock,
-		pid:  pid,
-		d:    d,
-	}
+	return nil
 }
+
+// Configure a debugger if arguments are set.
 
 // debug executes fn with the debugger if the debugger is not nil.
-func (c *Conn) debug(fn func(d *debugger)) {
-	if c.d == nil {
-		return
-	}
-
-	fn(c.d)
-}
+func (c *Conn) debug(fn func(d *debugger)) { _ = "STUB: not implemented"; return }
 
 // Close closes the connection and unblocks any pending read operations.
 func (c *Conn) Close() error {
+	_ = "STUB: not implemented"
 	// Close does not acquire a lock because it must be able to interrupt any
 	// blocked system calls, such as when Receive is waiting on a multicast
 	// group message.
 	//
 	// We rely on the kernel to deal with concurrent operations to the netlink
 	// socket itself.
-	return newOpError("close", c.sock.Close())
+	return nil
 }
 
 // Execute sends a single Message to netlink using Send, receives one or more
@@ -133,55 +111,19 @@ func (c *Conn) Close() error {
 // See the documentation of Send, Receive, and Validate for details about
 // each function.
 func (c *Conn) Execute(m Message) ([]Message, error) {
+	_ = "STUB: not implemented"
 	// Acquire the write lock and invoke the internal implementations of Send
 	// and Receive which require the lock already be held.
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	req, err := c.lockedSend(m)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := c.lockedReceive()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := Validate(req, res); err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return nil, nil
 }
 
 // SendMessages sends multiple Messages to netlink. The handling of
 // a Header's Length, Sequence and PID fields is the same as when
 // calling Send.
 func (c *Conn) SendMessages(msgs []Message) ([]Message, error) {
+	_ = "STUB: not implemented"
 	// Wait for any concurrent calls to Execute to finish before proceeding.
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	for i := range msgs {
-		c.fixMsg(&msgs[i], nlmsgLength(len(msgs[i].Data)))
-	}
-
-	c.debug(func(d *debugger) {
-		for _, m := range msgs {
-			d.debugf(1, "send msgs: %+v", m)
-		}
-	})
-
-	if err := c.sock.SendMessages(msgs); err != nil {
-		c.debug(func(d *debugger) {
-			d.debugf(1, "send msgs: err: %v", err)
-		})
-
-		return nil, newOpError("send-messages", err)
-	}
-
-	return msgs, nil
+	return nil, nil
 }
 
 // Send sends a single Message to netlink.  In most cases, a Header's Length,
@@ -198,32 +140,17 @@ func (c *Conn) SendMessages(msgs []Message) ([]Message, error) {
 // If Header.PID is 0, it will be automatically populated using a PID
 // assigned by netlink.
 func (c *Conn) Send(m Message) (Message, error) {
+	_ = "STUB: not implemented"
 	// Wait for any concurrent calls to Execute to finish before proceeding.
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	return c.lockedSend(m)
+	return *new(Message), nil
 }
 
 // lockedSend implements Send, but must be called with c.mu acquired for reading.
 // We rely on the kernel to deal with concurrent reads and writes to the netlink
 // socket itself.
 func (c *Conn) lockedSend(m Message) (Message, error) {
-	c.fixMsg(&m, nlmsgLength(len(m.Data)))
-
-	c.debug(func(d *debugger) {
-		d.debugf(1, "send: %+v", m)
-	})
-
-	if err := c.sock.Send(m); err != nil {
-		c.debug(func(d *debugger) {
-			d.debugf(1, "send: err: %v", err)
-		})
-
-		return Message{}, newOpError("send", err)
-	}
-
-	return m, nil
+	_ = "STUB: not implemented"
+	return *new(Message), nil
 }
 
 // Receive receives one or more messages from netlink.  Multi-part messages are
@@ -232,16 +159,12 @@ func (c *Conn) lockedSend(m Message) (Message, error) {
 //
 // If any of the messages indicate a netlink error, that error will be returned.
 func (c *Conn) Receive() ([]Message, error) {
+	_ = "STUB: not implemented"
 	// Wait for any concurrent calls to Execute to finish before proceeding.
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	// Serialize concurrent Receive calls. See receiveMu for details.
-	c.receiveMu.Lock()
-	defer c.receiveMu.Unlock()
-
-	return c.lockedReceive()
+	return nil, nil
 }
+
+// Serialize concurrent Receive calls. See receiveMu for details.
 
 // ReceiveIter returns an iterator which can be used to receive messages from
 // netlink. Just like Receive, multi-part messages are handled transparently and
@@ -249,120 +172,38 @@ func (c *Conn) Receive() ([]Message, error) {
 //
 // If the iteration is stopped before all messages have been read and the
 // response is multi-part, the remaining messages will be discarded.
-func (c *Conn) ReceiveIter() iter.Seq2[Message, error] {
-	return func(yield func(Message, error) bool) {
-		// Wait for any concurrent calls to Execute to finish before proceeding.
-		c.mu.RLock()
-		defer c.mu.RUnlock()
+func (c *Conn) ReceiveIter() iter.Seq2[Message, error] { _ = "STUB: not implemented"; return nil }
 
-		// Serialize concurrent ReceiveIter calls. See receiveMu for details.
-		c.receiveMu.Lock()
-		defer c.receiveMu.Unlock()
+// Wait for any concurrent calls to Execute to finish before proceeding.
 
-		for msg, err := range c.lockedReceiveIter() {
-			if err != nil {
-				c.debug(func(d *debugger) {
-					d.debugf(1, "recv: err: %v", err)
-				})
-				yield(Message{}, err)
-				return
-			}
-
-			c.debug(func(d *debugger) {
-				d.debugf(1, "recv: %+v", msg)
-			})
-			if !yield(msg, nil) {
-				return
-			}
-		}
-	}
-}
+// Serialize concurrent ReceiveIter calls. See receiveMu for details.
 
 // lockedReceive implements Receive, but must be called with c.mu acquired for reading.
 // We rely on the kernel to deal with concurrent reads and writes to the netlink
 // socket itself.
-func (c *Conn) lockedReceive() ([]Message, error) {
-	var msgs []Message
-
-	for m, err := range c.lockedReceiveIter() {
-		if err != nil {
-			c.debug(func(d *debugger) {
-				d.debugf(1, "recv: err: %v", err)
-			})
-			return nil, err
-		}
-
-		c.debug(func(d *debugger) {
-			d.debugf(1, "recv: %+v", m)
-		})
-
-		msgs = append(msgs, m)
-	}
-
-	return msgs, nil
-}
+func (c *Conn) lockedReceive() ([]Message, error) { _ = "STUB: not implemented"; return nil, nil }
 
 // lockedReceiveIter returns an iterator which can be used to receive messages
 // from netlink, but must be called with c.mu acquired for the duration of the
 // iteration.
-func (c *Conn) lockedReceiveIter() iter.Seq2[Message, error] {
-	return func(yield func(Message, error) bool) {
-		// NB: All non-nil errors returned from this function *must* be of type
-		// OpError in order to maintain the appropriate contract with callers of
-		// this package.
-		//
-		// This contract also applies to functions called within this function,
-		// such as checkMessage.
+func (c *Conn) lockedReceiveIter() iter.Seq2[Message, error] { _ = "STUB: not implemented"; return nil }
 
-		var more, stopped bool
-		// send is a helper function to prevent yielding messages after the user
-		// has stopped iterating
-		var send = func(m Message, err error) {
-			if stopped {
-				return
-			}
-			if !yield(m, err) {
-				stopped = true
-			}
-		}
+// NB: All non-nil errors returned from this function *must* be of type
+// OpError in order to maintain the appropriate contract with callers of
+// this package.
+//
+// This contract also applies to functions called within this function,
+// such as checkMessage.
 
-		for {
-			for m, err := range c.sock.ReceiveIter() {
-				if err != nil {
-					send(Message{}, newOpError("receive", err))
-					return
-				}
+// send is a helper function to prevent yielding messages after the user
+// has stopped iterating
 
-				if err := checkMessage(m); err != nil {
-					send(Message{}, err)
-					return
-				}
+// Exit early if we encounter a multi-part done message.
+// This should be safe to do since messages of type Done should always
+// be the last message in a datagram.
 
-				// Exit early if we encounter a multi-part done message.
-				// This should be safe to do since messages of type Done should always
-				// be the last message in a datagram.
-				if m.Header.Type == Done && m.Header.Flags&Multi != 0 {
-					return
-				}
-
-				if m.Header.Flags&Multi != 0 {
-					more = true
-				}
-
-				send(m, nil)
-				if stopped && !more {
-					// The user has stopped iterating and there are no more messages
-					// to read.
-					return
-				}
-			}
-
-			if !more {
-				return
-			}
-		}
-	}
-}
+// The user has stopped iterating and there are no more messages
+// to read.
 
 // A groupJoinLeaver is a Socket that supports joining and leaving
 // netlink multicast groups.
@@ -373,24 +214,10 @@ type groupJoinLeaver interface {
 }
 
 // JoinGroup joins a netlink multicast group by its ID.
-func (c *Conn) JoinGroup(group uint32) error {
-	conn, ok := c.sock.(groupJoinLeaver)
-	if !ok {
-		return notSupported("join-group")
-	}
-
-	return newOpError("join-group", conn.JoinGroup(group))
-}
+func (c *Conn) JoinGroup(group uint32) error { _ = "STUB: not implemented"; return nil }
 
 // LeaveGroup leaves a netlink multicast group by its ID.
-func (c *Conn) LeaveGroup(group uint32) error {
-	conn, ok := c.sock.(groupJoinLeaver)
-	if !ok {
-		return notSupported("leave-group")
-	}
-
-	return newOpError("leave-group", conn.LeaveGroup(group))
-}
+func (c *Conn) LeaveGroup(group uint32) error { _ = "STUB: not implemented"; return nil }
 
 // A bpfSetter is a Socket that supports setting and removing BPF filters.
 type bpfSetter interface {
@@ -400,24 +227,10 @@ type bpfSetter interface {
 }
 
 // SetBPF attaches an assembled BPF program to a Conn.
-func (c *Conn) SetBPF(filter []bpf.RawInstruction) error {
-	conn, ok := c.sock.(bpfSetter)
-	if !ok {
-		return notSupported("set-bpf")
-	}
-
-	return newOpError("set-bpf", conn.SetBPF(filter))
-}
+func (c *Conn) SetBPF(filter []bpf.RawInstruction) error { _ = "STUB: not implemented"; return nil }
 
 // RemoveBPF removes a BPF filter from a Conn.
-func (c *Conn) RemoveBPF() error {
-	conn, ok := c.sock.(bpfSetter)
-	if !ok {
-		return notSupported("remove-bpf")
-	}
-
-	return newOpError("remove-bpf", conn.RemoveBPF())
-}
+func (c *Conn) RemoveBPF() error { _ = "STUB: not implemented"; return nil }
 
 // A deadlineSetter is a Socket that supports setting deadlines.
 type deadlineSetter interface {
@@ -428,34 +241,13 @@ type deadlineSetter interface {
 }
 
 // SetDeadline sets the read and write deadlines associated with the connection.
-func (c *Conn) SetDeadline(t time.Time) error {
-	conn, ok := c.sock.(deadlineSetter)
-	if !ok {
-		return notSupported("set-deadline")
-	}
-
-	return newOpError("set-deadline", conn.SetDeadline(t))
-}
+func (c *Conn) SetDeadline(t time.Time) error { _ = "STUB: not implemented"; return nil }
 
 // SetReadDeadline sets the read deadline associated with the connection.
-func (c *Conn) SetReadDeadline(t time.Time) error {
-	conn, ok := c.sock.(deadlineSetter)
-	if !ok {
-		return notSupported("set-read-deadline")
-	}
-
-	return newOpError("set-read-deadline", conn.SetReadDeadline(t))
-}
+func (c *Conn) SetReadDeadline(t time.Time) error { _ = "STUB: not implemented"; return nil }
 
 // SetWriteDeadline sets the write deadline associated with the connection.
-func (c *Conn) SetWriteDeadline(t time.Time) error {
-	conn, ok := c.sock.(deadlineSetter)
-	if !ok {
-		return notSupported("set-write-deadline")
-	}
-
-	return newOpError("set-write-deadline", conn.SetWriteDeadline(t))
-}
+func (c *Conn) SetWriteDeadline(t time.Time) error { _ = "STUB: not implemented"; return nil }
 
 // A ConnOption is a boolean option that may be set for a Conn.
 type ConnOption int
@@ -480,12 +272,8 @@ type optionSetter interface {
 
 // SetOption enables or disables a netlink socket option for the Conn.
 func (c *Conn) SetOption(option ConnOption, enable bool) error {
-	conn, ok := c.sock.(optionSetter)
-	if !ok {
-		return notSupported("set-option")
-	}
-
-	return newOpError("set-option", conn.SetOption(option, enable))
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // A bufferedSocket is a Socket that supports getting & setting connection
@@ -500,65 +288,30 @@ type bufferedSocket interface {
 
 // SetReadBuffer sets the size of the operating system's receive buffer
 // associated with the Conn.
-func (c *Conn) SetReadBuffer(bytes int) error {
-	conn, ok := c.sock.(bufferedSocket)
-	if !ok {
-		return notSupported("set-read-buffer")
-	}
-
-	return newOpError("set-read-buffer", conn.SetReadBuffer(bytes))
-}
+func (c *Conn) SetReadBuffer(bytes int) error { _ = "STUB: not implemented"; return nil }
 
 // SetWriteBuffer sets the size of the operating system's transmit buffer
 // associated with the Conn.
-func (c *Conn) SetWriteBuffer(bytes int) error {
-	conn, ok := c.sock.(bufferedSocket)
-	if !ok {
-		return notSupported("set-write-buffer")
-	}
-
-	return newOpError("set-write-buffer", conn.SetWriteBuffer(bytes))
-}
+func (c *Conn) SetWriteBuffer(bytes int) error { _ = "STUB: not implemented"; return nil }
 
 // ReadBuffer reads the size of the operating system's receive buffer
 // associated with the Conn.
-func (c *Conn) ReadBuffer() (int, error) {
-	conn, ok := c.sock.(bufferedSocket)
-	if !ok {
-		return 0, notSupported("get-read-buffer")
-	}
-
-	buff, err := conn.ReadBuffer()
-	if err != nil {
-		return 0, newOpError("get-read-buffer", err)
-	}
-	return buff, nil
-}
+func (c *Conn) ReadBuffer() (int, error) { _ = "STUB: not implemented"; return 0, nil }
 
 // WriteBuffer reads the size of the operating system's transmit buffer
 // associated with the Conn.
-func (c *Conn) WriteBuffer() (int, error) {
-	conn, ok := c.sock.(bufferedSocket)
-	if !ok {
-		return 0, notSupported("get-write-buffer")
-	}
-
-	buff, err := conn.WriteBuffer()
-	if err != nil {
-		return 0, newOpError("get-write-buffer", err)
-	}
-
-	return buff, nil
-}
+func (c *Conn) WriteBuffer() (int, error) { _ = "STUB: not implemented"; return 0, nil }
 
 // PID returns the PID associated with the Conn. It is also known as
 // the port ID in netlink terminology.
 // https://docs.kernel.org/userspace-api/netlink/intro.html#nlmsg-pid
 func (c *Conn) PID() uint32 {
-	return c.pid
+	_ = "STUB: not implemented"
+
+	// A syscallConner is a Socket that supports syscall.Conn.
+	return 0
 }
 
-// A syscallConner is a Socket that supports syscall.Conn.
 type syscallConner interface {
 	Socket
 	syscall.Conn
@@ -576,61 +329,33 @@ var _ syscall.Conn = &Conn{}
 // performed using Conn and the syscall.RawConn do not conflict with
 // each other.
 func (c *Conn) SyscallConn() (syscall.RawConn, error) {
-	sc, ok := c.sock.(syscallConner)
-	if !ok {
-		return nil, notSupported("syscall-conn")
-	}
-
-	// TODO(mdlayher): mutex or similar to enforce syscall.RawConn contract of
-	// FD remaining valid for duration of calls?
-
-	return sc.SyscallConn()
+	_ = "STUB: not implemented"
+	return *new(syscall.RawConn), nil
 }
+
+// TODO(mdlayher): mutex or similar to enforce syscall.RawConn contract of
+// FD remaining valid for duration of calls?
 
 // fixMsg updates the fields of m using the logic specified in Send.
-func (c *Conn) fixMsg(m *Message, ml int) {
-	if m.Header.Length == 0 {
-		m.Header.Length = uint32(nlmsgAlign(ml))
-	}
-
-	if m.Header.Sequence == 0 {
-		m.Header.Sequence = c.nextSequence()
-	}
-
-	if m.Header.PID == 0 {
-		m.Header.PID = c.pid
-	}
-}
+func (c *Conn) fixMsg(m *Message, ml int) { _ = "STUB: not implemented"; return }
 
 // nextSequence atomically increments Conn's sequence number and returns
 // the incremented value.
-func (c *Conn) nextSequence() uint32 {
-	return atomic.AddUint32(&c.seq, 1)
-}
+func (c *Conn) nextSequence() uint32 { _ = "STUB: not implemented"; return 0 }
 
 // Validate validates one or more reply Messages against a request Message,
 // ensuring that they contain matching sequence numbers and PIDs.
-func Validate(request Message, replies []Message) error {
-	for _, m := range replies {
-		// Check for mismatched sequence, unless:
-		//   - request had no sequence, meaning we are probably validating
-		//     a multicast reply
-		if m.Header.Sequence != request.Header.Sequence && request.Header.Sequence != 0 {
-			return newOpError("validate", errMismatchedSequence)
-		}
+func Validate(request Message, replies []Message) error { _ = "STUB: not implemented"; return nil }
 
-		// Check for mismatched PID, unless:
-		//   - request had no PID, meaning we are either:
-		//     - validating a multicast reply
-		//     - netlink has not yet assigned us a PID
-		//   - response had no PID, meaning it's from the kernel as a multicast reply
-		if m.Header.PID != request.Header.PID && request.Header.PID != 0 && m.Header.PID != 0 {
-			return newOpError("validate", errMismatchedPID)
-		}
-	}
+// Check for mismatched sequence, unless:
+//   - request had no sequence, meaning we are probably validating
+//     a multicast reply
 
-	return nil
-}
+// Check for mismatched PID, unless:
+//   - request had no PID, meaning we are either:
+//     - validating a multicast reply
+//     - netlink has not yet assigned us a PID
+//   - response had no PID, meaning it's from the kernel as a multicast reply
 
 // Config contains options for a Conn.
 type Config struct {
